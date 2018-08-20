@@ -34,11 +34,11 @@
         "gulp-typescript": "^5.0.0-alpha.3",
         "mocha": "^5.2.0",
         "ts-node": "^7.0.0",
-        "typescript": "^2.9.2"
+        "typescript": "^3.0.1"
     },
     "dependencies": {
         "component-emitter": "^1.2.1",
         "lodash": "^4.17.4",
-        "log-formatter": "^0.1.5"
+        "log-formatter": "^1.0.2"
     }
 }
