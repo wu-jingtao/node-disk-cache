@@ -25,20 +25,20 @@
     "devDependencies": {
         "@types/component-emitter": "^1.2.7",
         "@types/expect.js": "^0.3.29",
-        "@types/lodash": "^4.14.116",
+        "@types/lodash": "^4.14.118",
         "@types/mocha": "^5.2.5",
-        "@types/node": "^10.7.1",
+        "@types/node": "^10.12.10",
         "expect.js": "^0.3.1",
         "gulp": "^3.9.1",
         "gulp-sourcemaps": "^2.6.4",
         "gulp-typescript": "^5.0.0-alpha.3",
         "mocha": "^5.2.0",
         "ts-node": "^7.0.1",
-        "typescript": "^3.0.1"
+        "typescript": "^3.1.6"
     },
     "dependencies": {
         "component-emitter": "^1.2.1",
-        "lodash": "^4.17.10",
-        "log-formatter": "^1.0.3"
+        "lodash": "^4.17.11",
+        "log-formatter": "^1.0.5"
     }
 }
