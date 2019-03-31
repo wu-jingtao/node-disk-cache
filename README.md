@@ -1,3 +1,4 @@
-# my-typescript-template
-我的typescript项目模板。
-这套模板主要是针对nodejs程序的开发。
+# node-disk-cache
+一个非常简单实用的Nodejs硬盘缓存系统
+
+
