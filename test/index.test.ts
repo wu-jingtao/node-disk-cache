@@ -105,21 +105,26 @@ describe('测试超时清理', function () {
 });
 
 it('测试超过容量限制', async function () {
+    this.timeout(10000);
+
     const cachePath = path.join(os.tmpdir(), `NodeDiskCache_Test_${Math.trunc(Math.random() * 10000)}`);
 
     //创建缓存
-    const cache = new DiskCache({ cacheDir: cachePath, volumeUpLimit: 1 });
+    const cache = new DiskCache({ cacheDir: cachePath, volumeUpLimit: 2 });
 
     await cache.set('a', Buffer.from('a'));
-    expect(cache.has('a')).to.be(true);
-
     await cache.set('b', Buffer.from('b'));
+    await cache.set('c', Buffer.from('c'));
+
+    await new Promise(resolve => setTimeout(resolve, 5100));
+
     expect(cache.has('a')).to.be(false);
-    expect(cache.has('b')).to.be(true);
+    expect(cache.has('b')).to.be(false);
+    expect(cache.has('c')).to.be(true);
 
     let cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
-    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('b');
+    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('c');
 
     await cache.empty();
 });
