@@ -5,11 +5,11 @@ export interface NodeDiskCacheOptions {
      */
     cacheDir?: string;
     /**
-     * 缓存容量上限(byte)，默认为缓存目录可用容量 * volumeUpLimitRate
+     * 缓存容量上限(byte)，默认为0，没有上限
      */
     volumeUpLimit?: number;
     /**
-     * 缓存占所在目录可用容量的上限比例，默认为0.9。如果设置了volumeUpLimit则会使该属性失效
+     * 动态监测缓存目录剩余容量，当已用容量占总容量超过指定比例后执行清理操作。范围0-1，默认0，没有上限。如果设置了volumeUpLimit则会使该属性失效
      */
     volumeUpLimitRate?: number;
     /**
@@ -24,12 +24,18 @@ export interface NodeDiskCacheOptions {
 export default class NodeDiskCache {
     private readonly _cacheTable;
     private readonly _cacheDir;
+    private static readonly _cacheDirList;
     private readonly _timeout;
     private readonly _refreshTimeoutWhenGet;
-    private readonly _volumeUpLimit;
+    private readonly _cleanerTimer;
     private _currentVolume;
     private _fileNameIndex;
     constructor(options?: NodeDiskCacheOptions);
+    /**
+     * 清理缓存
+     * @param downTo 将缓存大小下降到指定数值之下
+     */
+    private _cleanCache;
     /**
      * 设置或更新缓存
      */
@@ -54,4 +60,8 @@ export default class NodeDiskCache {
      * 清空缓存
      */
     empty(): Promise<void>;
+    /**
+     * 销毁缓存
+     */
+    destroy(): Promise<void>;
 }
