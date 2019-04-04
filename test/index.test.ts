@@ -18,6 +18,7 @@ it('测试基础功能', async function () {
     let cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
     expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a');
+    expect(cache.size).to.be(1);
 
     //重复设置缓存
     await cache.set('a', Buffer.from('a2'));

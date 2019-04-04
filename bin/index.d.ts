@@ -30,6 +30,10 @@ export default class NodeDiskCache {
     private readonly _cleanerTimer;
     private _currentVolume;
     private _fileNameIndex;
+    /**
+     * 获取当前的缓存大小
+     */
+    readonly size: number;
     constructor(options?: NodeDiskCacheOptions);
     /**
      * 清理缓存

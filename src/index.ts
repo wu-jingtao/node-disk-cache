@@ -56,6 +56,11 @@ export default class NodeDiskCache {
     //文件名称自增索引
     private _fileNameIndex = 0;
 
+    /**
+     * 获取当前的缓存大小
+     */
+    get size() { return this._currentVolume; }
+
     constructor(options: NodeDiskCacheOptions = {}) {
         //缓存目录
         this._cacheDir = options.cacheDir || path.join(os.tmpdir(), `NodeDiskCache_${Math.trunc(Math.random() * 10000)}`);
