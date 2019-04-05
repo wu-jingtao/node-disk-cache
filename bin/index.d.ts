@@ -28,7 +28,7 @@ export default class NodeDiskCache {
     private readonly _timeout;
     private readonly _refreshTimeoutWhenGet;
     private readonly _cleanerTimer;
-    private _currentVolume;
+    private _currentSize;
     private _fileNameIndex;
     /**
      * 获取当前的缓存大小
@@ -42,8 +42,9 @@ export default class NodeDiskCache {
     private _cleanCache;
     /**
      * 设置或更新缓存
+     * @param isAppend 是否以追加到文件末尾的方式写入数据，默认false
      */
-    set(key: string, value: Buffer | NodeJS.ReadableStream): Promise<void>;
+    set(key: string, value: Buffer | NodeJS.ReadableStream, isAppend?: boolean): Promise<void>;
     /**
      * 获取缓存
      */

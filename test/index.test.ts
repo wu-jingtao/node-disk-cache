@@ -18,36 +18,44 @@ it('测试基础功能', async function () {
     let cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
     expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a');
-    expect(cache.size).to.be(1);
-
-    //重复设置缓存
-    await cache.set('a', Buffer.from('a2'));
-    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a2');
 
     //通过流的方式设置缓存
-    await cache.set('a', intoStream('a3'));
+    await cache.set('a', intoStream('a2'));
+    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a2');
+
+    //重复设置缓存
+    await cache.set('a', Buffer.from('a3'));
     expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a3');
 
+    //已追加的方式设置缓存
+    await cache.set('a', Buffer.from(' append'), true);
+    await cache.set('a', intoStream(' append2'), true);
+    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a3 append append2');
+
+    //对不存在的文件进行追加
+    await cache.set('b', Buffer.from('b'), true);
+    await cache.set('c', intoStream('c'), true);
+
     //获取缓存
-    expect((await cache.get('a') as Buffer).toString()).to.be('a3');
-    expect(await getStream(cache.getStream('a') as NodeJS.ReadableStream)).to.be('a3');
-    expect(await cache.get('b')).to.be(undefined);
-    expect(cache.getStream('b')).to.be(undefined);
+    expect((await cache.get('a') as Buffer).toString()).to.be('a3 append append2');
+    expect(await getStream(cache.getStream('a') as NodeJS.ReadableStream)).to.be('a3 append append2');
+    expect((await cache.get('b') as Buffer).toString()).to.be('b');
+    expect((await cache.get('c') as Buffer).toString()).to.be('c');
+    expect(await cache.get('d')).to.be(undefined);
+    expect(cache.getStream('d')).to.be(undefined);
 
     //判断是否存在
     expect(cache.has('a')).to.be(true);
-    expect(cache.has('b')).to.be(false);
+    expect(cache.has('b')).to.be(true);
+    expect(cache.has('c')).to.be(true);
+    expect(cache.has('d')).to.be(false);
 
     //测试删除缓存
     await cache.delete('a');
     cacheFiles = await fs.promises.readdir(cachePath);
-    expect(cacheFiles).length(0);
+    expect(cacheFiles).length(2);
 
     //测试清空缓存
-    await cache.set('b', Buffer.from('b'));
-    await cache.set('c', Buffer.from('c'));
-    cacheFiles = await fs.promises.readdir(cachePath);
-    expect(cacheFiles).length(2);
     await cache.empty();
     cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(0);
@@ -111,11 +119,11 @@ it('测试超过容量限制', async function () {
     const cachePath = path.join(os.tmpdir(), `NodeDiskCache_Test_${Math.trunc(Math.random() * 10000)}`);
 
     //创建缓存
-    const cache = new DiskCache({ cacheDir: cachePath, volumeUpLimit: 2 });
+    const cache = new DiskCache({ cacheDir: cachePath, volumeUpLimit: 1024 * 1024 * 2 });
 
-    await cache.set('a', Buffer.from('a'));
-    await cache.set('b', Buffer.from('b'));
-    await cache.set('c', Buffer.from('c'));
+    await cache.set('a', Buffer.alloc(1024 * 1024, 'a'));
+    await cache.set('b', Buffer.alloc(1024 * 1024, 'b'));
+    await cache.set('c', Buffer.alloc(1024 * 1024, 'c'));
 
     await new Promise(resolve => setTimeout(resolve, 5100));
 
@@ -125,7 +133,7 @@ it('测试超过容量限制', async function () {
 
     let cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
-    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('c');
+    expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()[0]).to.be('c');
 
     await cache.empty();
 });
