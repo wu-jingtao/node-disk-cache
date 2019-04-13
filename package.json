@@ -1,6 +1,6 @@
 {
     "name": "node-disk-cache",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "一个非常简单实用的Nodejs硬盘缓存系统",
     "engines": { "node" : ">=10" },
     "main": "./bin/index.js",

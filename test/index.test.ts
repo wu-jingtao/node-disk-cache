@@ -14,7 +14,7 @@ it('测试基础功能', async function () {
     const cache = new DiskCache({ cacheDir: cachePath });
 
     //设置缓存
-    await cache.set('a', Buffer.from('a'));
+    await cache.set('a', 'a');
     let cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
     expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()).to.be('a');
@@ -36,24 +36,31 @@ it('测试基础功能', async function () {
     await cache.set('b', Buffer.from('b'), true);
     await cache.set('c', intoStream('c'), true);
 
+    //通过移动文件的方式设置缓存
+    const testFile = path.join(os.tmpdir(), Math.random().toString());
+    await fs.writeFile(testFile, 'd');
+    await cache.setByMove('d', testFile);
+
     //获取缓存
     expect((await cache.get('a') as Buffer).toString()).to.be('a3 append append2');
-    expect(await getStream(cache.getStream('a') as NodeJS.ReadableStream)).to.be('a3 append append2');
+    expect(await getStream(await cache.getStream('a') as NodeJS.ReadableStream)).to.be('a3 append append2');
     expect((await cache.get('b') as Buffer).toString()).to.be('b');
     expect((await cache.get('c') as Buffer).toString()).to.be('c');
-    expect(await cache.get('d')).to.be(undefined);
-    expect(cache.getStream('d')).to.be(undefined);
+    expect((await cache.get('d') as Buffer).toString()).to.be('d');
+    expect(await cache.get('e')).to.be(undefined);
+    expect(await cache.getStream('e')).to.be(undefined);
 
     //判断是否存在
     expect(cache.has('a')).to.be(true);
     expect(cache.has('b')).to.be(true);
     expect(cache.has('c')).to.be(true);
-    expect(cache.has('d')).to.be(false);
+    expect(cache.has('d')).to.be(true);
+    expect(cache.has('e')).to.be(false);
 
     //测试删除缓存
     await cache.delete('a');
     cacheFiles = await fs.promises.readdir(cachePath);
-    expect(cacheFiles).length(2);
+    expect(cacheFiles).length(3);
 
     //测试清空缓存
     await cache.empty();

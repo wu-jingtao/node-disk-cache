@@ -77,12 +77,13 @@ export default class NodeDiskCache {
                     this._cleanCache(upLimit * 0.9);
             }, 5000);
         } else if (options.volumeUpLimitRate as number > 0) {
-            const downLimitRate = 1 - Math.min(options.volumeUpLimitRate as number, 1);
+            const upLimitRate = Math.min(options.volumeUpLimitRate as number, 1);
+            const downLimitRate = 1 - upLimitRate;
             this._cleanerTimer = setInterval(async () => {
                 try {
                     const usage = await diskusage.check(this._cacheDir);
                     if (usage.available / usage.total < downLimitRate)
-                        this._cleanCache(this._currentSize - usage.total * 0.1);
+                        this._cleanCache(this._currentSize - usage.total * upLimitRate * 0.1);
                 } catch (err) {
                     console.error('获取缓存目录容量信息异常：', err);
                 }
@@ -115,105 +116,126 @@ export default class NodeDiskCache {
     }
 
     /**
-     * 设置或更新缓存
-     * @param isAppend 是否以追加到文件末尾的方式写入数据，默认false
+     * 在执行set之前做的一些准备工作
+     * @param writer 执行文件读取操作的方法
      */
-    async set(key: string, value: Buffer | NodeJS.ReadableStream, isAppend = false): Promise<void> {
-        const cache = this._cacheTable.get(key) || { name: path.join(this._cacheDir, (this._fileNameIndex++).toString()), size: 0, timer: undefined };
+    private async _prepareSet(key: string, writer: (path: string) => Promise<void>): Promise<void> {
+        let cache = this._cacheTable.get(key);
 
-        //清理旧的计时器
-        if (this._timeout > 0 && cache.timer !== undefined)
-            clearTimeout(cache.timer);
+        if (cache) {
+            if (this._timeout > 0) clearTimeout(cache.timer as any); //清理旧的计时器
 
-        //保存缓存
-        if (Buffer.isBuffer(value))
-            await fs.promises.writeFile(cache.name, value, { flag: isAppend ? 'a' : 'w' });
-        else {
-            await new Promise((resolve, reject) => {
-                value.pipe(fs.createWriteStream(cache.name, { flags: isAppend ? 'a' : 'w' }))
-                    .on('error', reject)
-                    .on('close', resolve);
-            });
+            try {
+                //执行存储方法
+                await writer(cache.name);
+
+                //查询文件大小
+                const status = await fs.promises.stat(cache.name);
+                this._currentSize -= cache.size;
+                cache.size = status.blksize || status.size;
+                this._currentSize += cache.size;
+            } finally {
+                //设置计时器
+                if (this._timeout > 0) {
+                    cache.timer = setTimeout(() => {
+                        this._cacheTable.delete(key);
+                        fs.remove((cache as any).name, err => {
+                            if (err)
+                                console.error('清除缓存异常：', err);
+                            else
+                                this._currentSize -= (cache as any).size;
+                        });
+                    }, this._timeout);
+                }
+            }
+
+            this._cacheTable.delete(key);   //刷新缓存在列表中的排位
+            this._cacheTable.set(key, cache);
+        } else {
+            cache = { name: path.join(this._cacheDir, (this._fileNameIndex++).toString()), size: 0, timer: undefined };
+
+            //执行存储方法
+            await writer(cache.name);
+
+            //查询文件大小
+            const status = await fs.promises.stat(cache.name);
+            cache.size = status.blksize || status.size;
+            this._currentSize += cache.size;
+
+            //设置计时器
+            if (this._timeout > 0) {
+                cache.timer = setTimeout(() => {
+                    this._cacheTable.delete(key);
+                    fs.remove((cache as any).name, err => {
+                        if (err)
+                            console.error('清除缓存异常：', err);
+                        else
+                            this._currentSize -= (cache as any).size;
+                    });
+                }, this._timeout);
+            }
+
+            this._cacheTable.set(key, cache);
         }
-
-        //查询文件大小
-        const status = await fs.promises.stat(cache.name);
-        this._currentSize -= cache.size;
-        cache.size = status.blksize || status.size;
-        this._currentSize += cache.size;
-
-        //设置计时器
-        if (this._timeout > 0) {
-            cache.timer = setTimeout(() => {
-                this._cacheTable.delete(key);
-                fs.remove(cache.name, err => {
-                    if (err)
-                        console.error('清除缓存异常：', err);
-                    else
-                        this._currentSize -= cache.size;
-                });
-            }, this._timeout);
-        }
-
-        this._cacheTable.delete(key);   //刷新缓存在列表中的排位
-        this._cacheTable.set(key, cache);
     }
 
     /**
-     * 获取缓存
+     * 在执行get之前做的一些准备工作
+     * @param reader 执行文件读取操作的方法
      */
-    async get(key: string): Promise<Buffer | undefined> {
+    private async _prepareGet<T>(key: string, reader: (path: string) => Promise<T>): Promise<T | undefined> {
         const cache = this._cacheTable.get(key);
 
         if (cache) {
             if (this._refreshTimeoutWhenGet && this._timeout > 0) {
                 this._cacheTable.delete(key);   //刷新缓存在列表中的排位
                 this._cacheTable.set(key, cache);
-
-                clearTimeout(cache.timer as any);
-                cache.timer = setTimeout(() => {
-                    this._cacheTable.delete(key);
-                    fs.remove(cache.name, err => {
-                        if (err)
-                            console.error('清除缓存异常：', err);
-                        else
-                            this._currentSize -= cache.size;
-                    });
-                }, this._timeout);
+                (cache.timer as NodeJS.Timer).refresh();
             }
 
-            return await fs.readFile(cache.name);
+            return reader(cache.name);
         } else
             return cache;
     }
 
     /**
+     * 设置或更新缓存
+     * @param isAppend 是否以追加到文件末尾的方式写入数据，默认false
+     */
+    set(key: string, value: string | Buffer | NodeJS.ReadableStream, isAppend = false): Promise<void> {
+        return this._prepareSet(key, path => {
+            if ('string' === typeof value || Buffer.isBuffer(value))
+                return fs.promises.writeFile(path, value, { flag: isAppend ? 'a' : 'w' });
+            else {
+                return new Promise((resolve, reject) => {
+                    value.pipe(fs.createWriteStream(path, { flags: isAppend ? 'a' : 'w' }))
+                        .on('error', reject)
+                        .on('close', resolve);
+                });
+            }
+        });
+    }
+
+    /**
+     * 通过移动现存文件的方式设置或更新缓存
+     * @param from 要移动文件的路径
+     */
+    setByMove(key: string, from: string): Promise<void> {
+        return this._prepareSet(key, path => fs.move(from, path));
+    }
+
+    /**
+     * 获取缓存
+     */
+    get(key: string): Promise<Buffer | undefined> {
+        return this._prepareGet(key, fs.readFile);
+    }
+
+    /**
      * 以流的方式获取缓存
      */
-    getStream(key: string): NodeJS.ReadableStream | undefined {
-        const cache = this._cacheTable.get(key);
-
-        if (cache) {
-            if (this._refreshTimeoutWhenGet && this._timeout > 0) {
-                this._cacheTable.delete(key);   //刷新缓存在列表中的排位
-                this._cacheTable.set(key, cache);
-                
-                clearTimeout(cache.timer as any);
-                cache.timer = setTimeout(() => {
-                    this._cacheTable.delete(key);
-                    fs.remove(cache.name, err => {
-                        if (err)
-                            console.error('清除缓存异常：', err);
-                        else
-                            this._currentSize -= cache.size;
-                    });
-                }, this._timeout);
-            }
-
-            return fs.createReadStream(cache.name);
-        }
-        else
-            return cache;
+    getStream(key: string): Promise<NodeJS.ReadableStream | undefined> {
+        return this._prepareGet(key, async path => fs.createReadStream(path));
     }
 
     /**
