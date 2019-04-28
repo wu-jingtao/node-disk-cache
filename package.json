@@ -1,8 +1,10 @@
 {
     "name": "node-disk-cache",
-    "version": "0.1.6",
+    "version": "0.2.0",
     "description": "一个非常简单实用的Nodejs硬盘缓存系统",
-    "engines": { "node" : ">=10" },
+    "engines": {
+        "node": ">=10"
+    },
     "main": "./bin/index.js",
     "types": "./bin/index.d.ts",
     "scripts": {
@@ -28,19 +30,19 @@
         "@types/expect.js": "^0.3.29",
         "@types/fs-extra": "^5.0.5",
         "@types/mocha": "^5.2.6",
-        "@types/node": "^11.12.2",
+        "@types/node": "^11.13.8",
         "expect.js": "^0.3.1",
-        "get-stream": "^5.0.0",
-        "gulp": "^4.0.0",
+        "get-stream": "^5.1.0",
+        "gulp": "^4.0.1",
         "gulp-sourcemaps": "^2.6.5",
         "gulp-typescript": "^5.0.1",
-        "into-stream": "^5.0.0",
-        "mocha": "^6.0.2",
-        "ts-node": "^8.0.3",
-        "typescript": "^3.4.1"
+        "into-stream": "^5.1.0",
+        "mocha": "^6.1.4",
+        "ts-node": "^8.1.0",
+        "typescript": "^3.4.5"
     },
     "dependencies": {
-        "diskusage": "^1.0.0",
+        "diskusage": "^1.1.0",
         "fs-extra": "^7.0.1"
     }
 }
