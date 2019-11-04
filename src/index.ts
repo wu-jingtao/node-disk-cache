@@ -6,8 +6,6 @@ import * as diskusage from 'diskusage';
 import { ICacheItem } from './ICacheItem';
 import { INodeDiskCacheOptions } from './INodeDiskCacheOptions';
 
-const isWin32 = os.platform() === 'win32';
-
 export default class NodeDiskCache {
 
     // 缓存目录列表，防止某一缓存目录被重复使用
@@ -114,7 +112,7 @@ export default class NodeDiskCache {
         // 查询文件大小
         const status = await fs.promises.stat(cache.filePath);
         this._currentSize -= cache.fileSize;
-        cache.fileSize = isWin32 ? status.size : status.blksize; // 由于node在windows下blksize数值不准确
+        cache.fileSize = status.size;
         this._currentSize += cache.fileSize;
 
         cache.refreshTimeoutWhenGet = refreshTimeoutWhenGet;

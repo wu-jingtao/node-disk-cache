@@ -170,9 +170,9 @@ it('测试容量限制', async function () {
     const cachePath = path.join(os.tmpdir(), `NodeDiskCache_Test_${Math.trunc(Math.random() * 10000)}`);
     const cache = new DiskCache({ cacheDir: cachePath, volumeUpLimit: 1024 * 1024 * 2, cleanInterval: 100, cleanAmount: 0.1 });
 
-    await cache.set('a', Buffer.alloc(1024 * 1024, 'a'));
-    await cache.set('b', Buffer.alloc(1024 * 1024, 'b'));
-    await cache.set('c', Buffer.alloc(1024 * 1024, 'c'));
+    await cache.set('a', Buffer.alloc(1024 * 1024, 'a', 'ascii'));
+    await cache.set('b', Buffer.alloc(1024 * 1024, 'b', 'ascii'));
+    await cache.set('c', Buffer.alloc(1024 * 1024, 'c', 'ascii'));
 
     await new Promise(resolve => setTimeout(resolve, 110));
 
