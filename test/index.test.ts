@@ -15,6 +15,10 @@ describe('测试基础功能', function () {
         return cache.empty();
     });
 
+    after(function () {
+        return cache.destroy();
+    });
+
     describe('测试set', async function () {
         it('缓存string', async function () {
             await cache.set('a', 'a');
@@ -183,4 +187,6 @@ it('测试容量限制', async function () {
     const cacheFiles = await fs.promises.readdir(cachePath);
     expect(cacheFiles).length(1);
     expect((await fs.readFile(path.join(cachePath, cacheFiles[0]))).toString()[0]).to.be('c');
+
+    await cache.destroy();
 });
