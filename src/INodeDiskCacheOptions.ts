@@ -1,9 +1,9 @@
 /**
  * 构造函数参数
  */
-export interface NodeDiskCacheOptions {
+export interface INodeDiskCacheOptions {
     /**
-     * 缓存目录地址，默认'/tmp/NodeDiskCache_{random}'
+     * 缓存目录地址，默认'/{os.tmpdir()}/NodeDiskCache_{random}'
      */
     cacheDir?: string;
 
@@ -18,7 +18,7 @@ export interface NodeDiskCacheOptions {
     volumeUpLimitRate?: number;
 
     /**
-     * 每隔多长时间检查一下缓存是否超过了上限，默认1分钟
+     * 每隔多长时间检查一下缓存是否超过了上限(ms)，默认1分钟
      */
     cleanInterval?: number;
 

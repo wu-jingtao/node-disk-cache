@@ -9,7 +9,7 @@ import DiskCache from '../src';
 
 describe('测试基础功能', function () {
     const cachePath = path.join(os.tmpdir(), `NodeDiskCache_Test_${Math.trunc(Math.random() * 10000)}`);
-    const cache = new DiskCache({ cacheDir: cachePath }); //创建缓存
+    const cache = new DiskCache({ cacheDir: cachePath }); // 创建缓存
 
     afterEach(function () {
         return cache.empty();
@@ -116,7 +116,7 @@ describe('测试基础功能', function () {
         it('删除一组缓存', async function () {
             await cache.setGroup([
                 { key: 'a', value: 'a' },
-                { key: 'b', value: 'b' },
+                { key: 'b', value: 'b' }
             ]);
 
             await cache.delete('a');
@@ -141,7 +141,7 @@ describe('测试基础功能', function () {
         it('缓存组超时', async function () {
             await cache.setGroup([
                 { key: 'a', value: 'a', timeout: 100 },
-                { key: 'b', value: 'b' },
+                { key: 'b', value: 'b' }
             ]);
 
             await new Promise(resolve => setTimeout(resolve, 110));
@@ -165,7 +165,6 @@ describe('测试基础功能', function () {
         });
     });
 });
-
 
 it('测试容量限制', async function () {
     const cachePath = path.join(os.tmpdir(), `NodeDiskCache_Test_${Math.trunc(Math.random() * 10000)}`);

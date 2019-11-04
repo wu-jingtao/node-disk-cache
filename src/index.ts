@@ -3,62 +3,67 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as diskusage from 'diskusage';
 
-import { CacheItem } from './CacheItem';
-import { NodeDiskCacheOptions } from './NodeDiskCacheOptions';
+import { ICacheItem } from './ICacheItem';
+import { INodeDiskCacheOptions } from './INodeDiskCacheOptions';
+
+const isWin32 = os.platform() === 'win32';
 
 export default class NodeDiskCache {
 
-    //缓存目录列表，防止某一缓存目录被重复使用
+    // 缓存目录列表，防止某一缓存目录被重复使用
     private static readonly _cacheDirList = new Set<string>();
 
-    //缓存数据存放目录
+    // 缓存数据存放目录
     private readonly _cacheDir: string;
 
-    //缓存索引列表
-    private readonly _cacheItems = new Map<string, CacheItem>();
+    // 缓存索引列表
+    private readonly _cacheItems = new Map<string, ICacheItem>();
 
-    //默认缓存超时
+    // 默认缓存超时
     private readonly _defaultTimeout: number;
 
-    //默认是否获取缓存时重置timeout
+    // 默认是否获取缓存时重置timeout
     private readonly _defaultRefreshTimeoutWhenGet: boolean;
 
-    //清理缓存计时器
+    // 清理缓存计时器
     private readonly _cleanerTimer: NodeJS.Timer;
 
-    //当前缓存大小
+    // 当前缓存大小
     private _currentSize = 0;
 
-    //文件名称自增索引
+    // 文件名称自增索引
     private _fileNameIndex = 0;
 
     /**
      * 获取当前的缓存大小
      */
-    get size() { return this._currentSize; }
+    get size(): number { return this._currentSize }
 
-    constructor(options: NodeDiskCacheOptions = {}) {
-        //缓存目录
-        this._cacheDir = options.cacheDir || path.join(os.tmpdir(), `NodeDiskCache_${Math.trunc(Math.random() * 10000)}`);
-        if (NodeDiskCache._cacheDirList.has(this._cacheDir))
-            throw new Error(`缓存目录已被占用：'${this._cacheDir}'`);
+    constructor(options: INodeDiskCacheOptions = {}) {
+        // 缓存目录
+        this._cacheDir = options.cacheDir || path.join(os.tmpdir(), `NodeDiskCache_${Math.trunc(Math.random() * Math.random() * 1000000)}`);
+        if (NodeDiskCache._cacheDirList.has(this._cacheDir)) throw new Error(`缓存目录已被占用：'${this._cacheDir}'`);
         fs.emptyDirSync(this._cacheDir);
         NodeDiskCache._cacheDirList.add(this._cacheDir);
 
-        //清理缓存
+        // 清理缓存
         if (options.volumeUpLimit as number > 0) {
             const upLimit = options.volumeUpLimit as number;
             const cleanAmount = Math.min(options.cleanAmount || 0.1, 1);
             const downTo = upLimit * (1 - cleanAmount);
 
             this._cleanerTimer = setInterval(async () => {
-                if (this._currentSize > upLimit) {
-                    for (const item of this._cacheItems) {
-                        if (this._currentSize > downTo)
-                            await this.delete(item[0], item[1]);
-                        else
-                            break;
+                try {
+                    if (this._currentSize > upLimit) {
+                        for (const item of this._cacheItems) {
+                            if (this._currentSize > downTo)
+                                await this.delete(item[0], item[1]);
+                            else
+                                break;
+                        }
                     }
+                } catch (error) {
+                    console.error('清理缓存失败:', error);
                 }
             }, options.cleanInterval || 60 * 1000);
         } else if (options.volumeUpLimitRate as number > 0) {
@@ -69,14 +74,19 @@ export default class NodeDiskCache {
             this._cleanerTimer = setInterval(async () => {
                 try {
                     const usage = await diskusage.check(this._cacheDir);
-                    if (usage.available / usage.total < downLimitRate) {
-                        const downTo = this._currentSize - usage.total * upLimitRate * cleanAmount;
-                        for (const item of this._cacheItems) {
-                            if (this._currentSize > downTo)
-                                await this.delete(item[0], item[1]);
-                            else
-                                break;
+
+                    try {
+                        if (usage.available / usage.total < downLimitRate) {
+                            const downTo = this._currentSize - usage.total * upLimitRate * cleanAmount;
+                            for (const item of this._cacheItems) {
+                                if (this._currentSize > downTo)
+                                    await this.delete(item[0], item[1]);
+                                else
+                                    break;
+                            }
                         }
+                    } catch (error) {
+                        console.error('清理缓存失败:', error);
                     }
                 } catch (err) {
                     console.error('获取缓存目录容量信息异常：', err);
@@ -84,7 +94,7 @@ export default class NodeDiskCache {
             }, options.cleanInterval || 60 * 1000);
         }
 
-        //默认缓存超时
+        // 默认缓存超时
         this._defaultTimeout = options.timeout as number > 0 ? options.timeout as number : 0;
         this._defaultRefreshTimeoutWhenGet = !!options.refreshTimeoutWhenGet;
     }
@@ -94,36 +104,37 @@ export default class NodeDiskCache {
      * @param writer 执行文件写入操作的方法
      */
     private async _prepareWrite(writer: (path: string) => Promise<void>, key: string, timeout: number, refreshTimeoutWhenGet: boolean, related?: string[]): Promise<void> {
-        const cache: any = this._cacheItems.get(key) || {
-            filePath: path.join(this._cacheDir, (this._fileNameIndex++).toString()),
-            fileSize: 0
-        };
+        const cache = this._cacheItems.get(key) || { filePath: path.join(this._cacheDir, (this._fileNameIndex++).toString()), fileSize: 0 } as ICacheItem;
 
-        clearTimeout(cache.timeout);
+        clearTimeout(cache.timeout as any);
 
-        //执行存储方法
+        // 执行存储方法
         await writer(cache.filePath);
 
-        //查询文件大小
+        // 查询文件大小
         const status = await fs.promises.stat(cache.filePath);
         this._currentSize -= cache.fileSize;
-        cache.fileSize = status.blksize || status.size;
+        cache.fileSize = isWin32 ? status.size : status.blksize; // 由于node在windows下blksize数值不准确
         this._currentSize += cache.fileSize;
 
         cache.refreshTimeoutWhenGet = refreshTimeoutWhenGet;
-        if (timeout > 0) cache.timeout = setTimeout(() => this.delete(key, cache), timeout);
+        if (timeout > 0) cache.timeout = setTimeout(() => this.delete(key, cache).catch(err => console.error('清理缓存失败:', err)), timeout);
         if (related) cache.related = related;
 
-        this._cacheItems.delete(key);   //刷新缓存在列表中的排位
+        this._cacheItems.delete(key);   // 刷新缓存在列表中的排位
         this._cacheItems.set(key, cache);
     }
 
     /**
      * 设置或更新缓存
+     * @param key 键名
+     * @param value 缓存的值
      * @param isAppend 是否以追加到文件末尾的方式写入数据，默认false
-     * @param __related 相关缓存(内部使用)
+     * @param timeout 缓存超时时间(ms)，默认等于构造函数中传入的timeout
+     * @param refreshTimeoutWhenGet 获取缓存时是否重置超时时间(ms)，默认等于构造函数中传入的refreshTimeoutWhenGet
+     * @param _related 相关缓存(内部使用)
      */
-    set(key: string, value: string | Buffer | NodeJS.ReadableStream, isAppend = false, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, __related?: string[]): Promise<void> {
+    set(key: string, value: string | Buffer | NodeJS.ReadableStream, isAppend = false, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
         return this._prepareWrite(path => {
             if ('string' === typeof value || Buffer.isBuffer(value))
                 return fs.promises.writeFile(path, value, { flag: isAppend ? 'a' : 'w' });
@@ -134,32 +145,34 @@ export default class NodeDiskCache {
                         .on('close', resolve);
                 });
             }
-        }, key, timeout, refreshTimeoutWhenGet, __related);
+        }, key, timeout, refreshTimeoutWhenGet, _related);
     }
 
     /**
      * 通过移动现存文件的方式设置或更新缓存
+     * @param key 键名
      * @param from 要移动文件的路径
-     * @param __related 相关缓存(内部使用)
+     * @param timeout 缓存超时时间(ms)，默认等于构造函数中传入的timeout
+     * @param refreshTimeoutWhenGet 获取缓存时是否重置超时时间(ms)，默认等于构造函数中传入的refreshTimeoutWhenGet
+     * @param _related 相关缓存(内部使用)
      */
-    move(key: string, from: string, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, __related?: string[]): Promise<void> {
-        return this._prepareWrite(path => fs.move(from, path), key, timeout, refreshTimeoutWhenGet, __related);
+    move(key: string, from: string, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
+        return this._prepareWrite(path => fs.move(from, path), key, timeout, refreshTimeoutWhenGet, _related);
     }
 
     /**
      * 同时设置多个缓存，并且使得这些缓存具有相互依存关系（无论哪一个被删除了，其他的都将同时被删除）
-     * 
      * @param items
      * {
      *  key：键,
      *  value：缓存的值,
      *  isAppend：是否以追加到文件末尾的方式写入数据，默认false,
      *  from：文件路径(以移动文件的方式设置缓存),
-     *  timeout：缓存超时计时器,
+     *  timeout：缓存超时时间(ms),
      *  refreshTimeoutWhenGet：获取缓存时是否重置timeout,
      * }
      */
-    async setGroup(items: { key: string, value?: string | Buffer | NodeJS.ReadableStream, isAppend?: boolean, from?: string, timeout?: number, refreshTimeoutWhenGet?: boolean }[]): Promise<void> {
+    async setGroup(items: { key: string; value?: string | Buffer | NodeJS.ReadableStream; isAppend?: boolean; from?: string; timeout?: number; refreshTimeoutWhenGet?: boolean }[]): Promise<void> {
         const related = items.map(item => item.key);
 
         for (const item of items) {
@@ -179,7 +192,7 @@ export default class NodeDiskCache {
         if (cache) {
             if (cache.refreshTimeoutWhenGet && cache.timeout) {
                 cache.timeout.refresh();
-                this._cacheItems.delete(key);   //刷新缓存在列表中的排位
+                this._cacheItems.delete(key); // 刷新缓存在列表中的排位
                 this._cacheItems.set(key, cache);
             }
 
@@ -197,7 +210,7 @@ export default class NodeDiskCache {
         if (cache) {
             if (cache.refreshTimeoutWhenGet && cache.timeout) {
                 cache.timeout.refresh();
-                this._cacheItems.delete(key);   //刷新缓存在列表中的排位
+                this._cacheItems.delete(key); // 刷新缓存在列表中的排位
                 this._cacheItems.set(key, cache);
             }
 
@@ -215,26 +228,20 @@ export default class NodeDiskCache {
 
     /**
      * 删除缓存
-     * 
-     * @param __cache 要被删除的缓存(内部使用)
+     * @param _cache 要被删除的缓存(内部使用)
      */
-    async delete(key: string, __cache = this._cacheItems.get(key)): Promise<void> {
-        if (__cache) {
+    async delete(key: string, _cache = this._cacheItems.get(key)): Promise<void> {
+        if (_cache) {
             this._cacheItems.delete(key);
-            clearTimeout(__cache.timeout as any);
+            clearTimeout(_cache.timeout as any);
 
-            if (__cache.related) {
-                for (const item of __cache.related) {
-                    this.delete(item);
-                }
+            if (_cache.related) {
+                for (const item of _cache.related)
+                    await this.delete(item);
             }
 
-            try {
-                await fs.remove(__cache.filePath);
-                this._currentSize -= __cache.fileSize;
-            } catch (error) {
-                console.error('删除缓存失败:', error);
-            }
+            await fs.remove(_cache.filePath);
+            this._currentSize -= _cache.fileSize;
         }
     }
 

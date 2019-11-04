@@ -1,7 +1,7 @@
 /**
  * 缓存
  */
-export interface CacheItem {
+export interface ICacheItem {
     /**
      * 缓存的文件路径
      */
