@@ -1,9 +1,9 @@
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs-extra';
+import os from 'os';
+import path from 'path';
+import fs from 'fs-extra';
 import getStream from 'get-stream';
 import intoStream from 'into-stream';
-import expect = require('expect.js');
+import expect from 'expect.js';
 
 import DiskCache from '../src';
 
