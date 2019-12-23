@@ -3,24 +3,24 @@
  */
 export interface ICacheItem {
     /**
-     * 缓存的文件路径
+     * 缓存文件名称
      */
-    filePath: string;
+    fileName: number;
 
     /**
-     * 缓存的文件大小
+     * 缓存文件大小
      */
     fileSize: number;
 
     /**
      * 缓存超时计时器
      */
-    timeout: NodeJS.Timer | undefined;
+    timeout?: NodeJS.Timer;
 
     /**
      * 获取缓存时是否重置timeout
      */
-    refreshTimeoutWhenGet: boolean;
+    refreshTimeoutWhenGet?: boolean;
 
     /**
      * 与该缓存存在依赖关系的其他缓存
