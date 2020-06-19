@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs-extra';
 import diskusage from 'diskusage';
 
-import { ICacheItem } from './ICacheItem';
-import { INodeDiskCacheOptions } from './INodeDiskCacheOptions';
+import { CacheItem } from './CacheItem';
+import { NodeDiskCacheOptions } from './NodeDiskCacheOptions';
 
 export default class NodeDiskCache {
 
@@ -15,7 +15,7 @@ export default class NodeDiskCache {
     private readonly _cacheDir: string;
 
     // 缓存索引列表
-    private readonly _cacheItems = new Map<string, ICacheItem>();
+    private readonly _cacheItems = new Map<string, CacheItem>();
 
     // 默认缓存超时
     private readonly _defaultTimeout: number;
@@ -37,7 +37,7 @@ export default class NodeDiskCache {
      */
     get size(): number { return this._currentSize }
 
-    constructor(options: INodeDiskCacheOptions = {}) {
+    constructor(options: NodeDiskCacheOptions = {}) {
         // 缓存目录
         this._cacheDir = options.cacheDir ?? path.join(os.tmpdir(), `NodeDiskCache_${Math.trunc(Math.random() * Math.random() * 1000000)}`);
         if (NodeDiskCache._cacheDirList.has(this._cacheDir)) throw new Error(`缓存目录已被占用：'${this._cacheDir}'`);
@@ -101,7 +101,8 @@ export default class NodeDiskCache {
      * 在执行set之前做的一些准备工作
      * @param writer 执行文件写入操作的方法
      */
-    private async _prepareWrite(writer: (path: string) => Promise<void>, key: string, timeout: number, refreshTimeoutWhenGet: boolean, related?: string[]): Promise<void> {
+    private async _prepareWrite(writer: (path: string) => Promise<void>, key: string, timeout: number,
+        refreshTimeoutWhenGet: boolean, related?: string[]): Promise<void> {
         const cache = this._cacheItems.get(key) ?? { fileName: this._fileNameIndex++, fileSize: 0 };
         const filePath = path.join(this._cacheDir, cache.fileName.toString());
 
@@ -134,9 +135,10 @@ export default class NodeDiskCache {
      * @param refreshTimeoutWhenGet 获取缓存时是否重置超时时间(ms)，默认等于构造函数中传入的refreshTimeoutWhenGet
      * @param _related 相关缓存(内部使用)
      */
-    set(key: string, value: string | Buffer | NodeJS.ReadableStream, isAppend = false, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
+    set(key: string, value: string | Buffer | NodeJS.ReadableStream, isAppend = false, timeout = this._defaultTimeout,
+        refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
         return this._prepareWrite(path => {
-            if ('string' === typeof value || Buffer.isBuffer(value))
+            if (typeof value === 'string' || Buffer.isBuffer(value))
                 return fs.promises.writeFile(path, value, { flag: isAppend ? 'a' : 'w' });
             else {
                 return new Promise((resolve, reject) => {
@@ -156,7 +158,8 @@ export default class NodeDiskCache {
      * @param refreshTimeoutWhenGet 获取缓存时是否重置超时时间(ms)，默认等于构造函数中传入的refreshTimeoutWhenGet
      * @param _related 相关缓存(内部使用)
      */
-    move(key: string, from: string, timeout = this._defaultTimeout, refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
+    move(key: string, from: string, timeout = this._defaultTimeout,
+        refreshTimeoutWhenGet = this._defaultRefreshTimeoutWhenGet, _related?: string[]): Promise<void> {
         return this._prepareWrite(path => fs.move(from, path), key, timeout, refreshTimeoutWhenGet, _related);
     }
 
@@ -172,7 +175,10 @@ export default class NodeDiskCache {
      *  refreshTimeoutWhenGet：获取缓存时是否重置timeout,
      * }
      */
-    async setGroup(items: { key: string; value?: string | Buffer | NodeJS.ReadableStream; isAppend?: boolean; from?: string; timeout?: number; refreshTimeoutWhenGet?: boolean }[]): Promise<void> {
+    async setGroup(items: {
+        key: string; value?: string | Buffer | NodeJS.ReadableStream; isAppend?: boolean; from?: string;
+        timeout?: number; refreshTimeoutWhenGet?: boolean;
+    }[]): Promise<void> {
         const related = items.map(item => item.key);
 
         for (const item of items) {

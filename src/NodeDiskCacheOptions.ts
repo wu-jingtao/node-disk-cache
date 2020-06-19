@@ -1,7 +1,7 @@
 /**
  * 构造函数参数
  */
-export interface INodeDiskCacheOptions {
+export interface NodeDiskCacheOptions {
     /**
      * 缓存目录地址，默认'/{os.tmpdir()}/NodeDiskCache_{random}'
      */

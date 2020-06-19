@@ -1,7 +1,7 @@
 {
     "name": "node-disk-cache",
-    "version": "0.2.2",
-    "description": "一个非常简单实用的Nodejs硬盘缓存系统",
+    "version": "1.0.0",
+    "description": "一个非常简单实用的 NodeJS 硬盘缓存系统",
     "engines": {
         "node": ">=10"
     },
@@ -29,21 +29,24 @@
     "homepage": "https://github.com/mx601595686/node-disk-cache#readme",
     "devDependencies": {
         "@types/expect.js": "^0.3.29",
-        "@types/fs-extra": "^8.0.1",
-        "@types/mocha": "^5.2.7",
-        "@types/node": "^12.12.21",
-        "eslint-config-sufu": "^0.3.0",
+        "@types/fs-extra": "^9.0.1",
+        "@types/mocha": "^7.0.2",
+        "@types/node": "^14.0.13",
+        "@typescript-eslint/eslint-plugin": "^3.3.0",
+        "@typescript-eslint/parser": "^3.3.0",
+        "eslint": "^7.2.0",
+        "eslint-config-sufu": "^2.0.3",
         "expect.js": "^0.3.1",
         "get-stream": "^5.1.0",
         "gulp": "^4.0.2",
         "gulp-typescript": "^5.0.1",
         "into-stream": "^5.1.1",
-        "mocha": "^6.2.2",
-        "ts-node": "^8.5.4",
-        "typescript": "^3.7.4"
+        "mocha": "^8.0.1",
+        "ts-node": "^8.10.2",
+        "typescript": "^3.9.5"
     },
     "dependencies": {
         "diskusage": "^1.1.3",
-        "fs-extra": "^8.1.0"
+        "fs-extra": "^9.0.1"
     }
 }
