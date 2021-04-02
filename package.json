@@ -21,12 +21,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/mx601595686/node-disk-cache.git"
+        "url": "git+https://github.com/wu-jingtao/node-disk-cache.git"
     },
     "bugs": {
-        "url": "https://github.com/mx601595686/node-disk-cache/issues"
+        "url": "https://github.com/wu-jingtao/node-disk-cache/issues"
     },
-    "homepage": "https://github.com/mx601595686/node-disk-cache#readme",
+    "homepage": "https://github.com/wu-jingtao/node-disk-cache#readme",
     "devDependencies": {
         "@types/expect.js": "^0.3.29",
         "@types/fs-extra": "^9.0.1",
